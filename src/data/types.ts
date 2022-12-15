@@ -18,6 +18,7 @@ type dataModel = {
 export type Model = dataModel;
 export type Policy = dataModel;
 export type Options = dataModel;
+export type Category = "models" | "policies" | "options"
 
 export interface Series {
     data: number[];
