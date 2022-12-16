@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { computed, isReactive, isRef, ref, onMounted } from "vue";
+import { computed, isReactive, isRef, reactive, ref, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import BarChart from "@/components/BarChart.vue";
 import LineChart from "@/components/BarChart.vue";
 import fetchMockData from "@/scripts/fetchMockData";
 import { useFormStore } from "@/store/form.store";
+import ParametersForm from "@/components/ParametersForm.vue";
+
+const store = useFormStore();
+
+const {
+  initialModelName,
+  initialPolicyName,
+  modelSelectionItems,
+  policySelectionItems,
+  onUpdate,
+  showRaw,
+  onSelectModel,
+  onSelectPolicy,
+} = store;
+const { modelParameters, policyParameters, optionsParameters } =
+  storeToRefs(store);
 
 const chartSelectionItems = [
   {
@@ -31,42 +47,39 @@ const chartOptions = {
   maintainAspectRatio: false,
 };
 
-const queryFormHidden = ref(false);
 const panel = ref("");
 
-const store = useFormStore();
+const selectedModel = ref(initialModelName);
+const selectedPolicy = ref(initialPolicyName);
 
-const { modelSelectionItems, policySelectionItems } = store;
-const { currentModel, currentPolicy } = storeToRefs(store);
-const {
-  modelParametersProps,
-  policyParametersProps,
-  optionsParametersProps,
-  onUpdate,
-} = store;
-// policyParametersProps,
-// optionsParametersProps,
-// onUpdate,
+function selectModel(name: string) {
+  selectedModel.value = name;
+  onSelectModel(name);
+}
+function selectPolicy(name: string) {
+  selectedPolicy.value = name;
+  onSelectPolicy(name);
+}
 
-onMounted(() => {
-  console.log("APP MOUNTED");
-
-  store.showRaw();
-
-  console.log("INITIALIZED STORE");
+// Unique id generated in order to distinguish different forms
+const formId = computed(() => {
+  let result = {
+    model: `model-${selectedModel.value}`,
+    policy: `policy-${selectedPolicy.value}`,
+  };
+  console.log("formId: ", result.model, result.policy);
+  return result;
 });
-const showSelections = [
-  {
-    title: "Selected Model",
-    subtitle: currentModel.label,
-  },
-  {
-    title: "Selected Policy",
-    subtitle: currentPolicy.label,
-  },
-];
 
-const modModel = ref(2);
+function updateModel(e, values: number[]) {
+  onUpdate("model", values);
+}
+function updatePolicy(e, values: number[]) {
+  onUpdate("policy", values);
+}
+function updateOptions(e, values: number[]) {
+  onUpdate("options", values);
+}
 </script>
 
 <template>
@@ -75,6 +88,11 @@ const modModel = ref(2);
       <v-row>
         <v-col cols="8">
           <v-container>
+            <pre>{{ modelParameters }}</pre>
+            <pre>{{ policyParameters }}</pre>
+            <!-- <div>
+                 <pre>{{ showRaw }}</pre>
+                 </div> -->
             <div>
               <Suspense @pending="loading = true" @resolve="loading = false">
                 <component
@@ -101,66 +119,58 @@ const modModel = ref(2);
             <v-form>
               <v-expansion-panels v-model="panel">
                 <v-expansion-panel value="model">
-                  <v-expansion-panel-title>MODEL</v-expansion-panel-title>
-                  <v-select
-                    v-model="currentModel"
-                    :items="modelSelectionItems"
-                    item-title="label"
-                    item-value="name"
+                  <v-expansion-panel-title
+                    ><span class="text-grey"
+                      >MODEL</span
+                    ></v-expansion-panel-title
                   >
-                  </v-select>
                   <v-expansion-panel-text>
-                    <pre lang="json">{{ modelParametersProps }}</pre>
+                    <v-select
+                      :model-value="selectedModel"
+                      @update:modelValue="selectModel"
+                      :items="modelSelectionItems"
+                      item-title="label"
+                      item-value="name"
+                    >
+                    </v-select>
+                    <ParametersForm
+                      :data-name="selectedModel"
+                      :items="modelParameters"
+                      @updated="updateModel"
+                    ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
                 <v-expansion-panel value="policy">
                   <v-expansion-panel-title>POLICY</v-expansion-panel-title>
-                  <v-select
-                    v-model="currentPolicy"
-                    :items="policySelectionItems"
-                    item-title="label"
-                    item-value="name"
-                  ></v-select>
                   <v-expansion-panel-text>
-                    <pre lang="json">{{ policyParametersProps }}</pre>
+                    <v-select
+                      :model-value="selectedPolicy"
+                      @update:modelValue="selectPolicy"
+                      :items="policySelectionItems"
+                      item-title="label"
+                      item-value="name"
+                    ></v-select>
+                    <ParametersForm
+                      :data-name="selectedPolicy"
+                      :items="policyParameters"
+                      @updated="updatePolicy"
+                    ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
                 <v-expansion-panel value="options">
                   <v-expansion-panel-title>OPTIONS</v-expansion-panel-title>
                   <v-expansion-panel-text>
-                    <pre lang="json">{{ optionsParametersProps }}</pre>
+                    <ParametersForm
+                      :items="optionsParameters"
+                      @updated="updateOptions"
+                    ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
               </v-expansion-panels>
             </v-form>
           </div>
           <div>
-            <v-row>
-              <v-spacer></v-spacer>
-              <v-col cols="5">
-                <p>
-                  <label>Selected Model: </label
-                  ><span class="text-primary"> {{ currentModel }}</span>
-                </p>
-                <p>
-                  <span>Selected Policy: {{ currentPolicy }}</span>
-                </p>
-              </v-col>
-            </v-row>
-            <v-form>
-              <v-slider
-                density="compact"
-                hide-details
-                label="Modify model"
-                min="0"
-                max="20"
-                rounded
-                v-model="modModel"
-                thumb-label="always"
-              >
-              </v-slider>
-              <v-btn @click="onUpdate('model')">Submit</v-btn>
-            </v-form>
+            <v-btn>Submit</v-btn>
           </div>
         </v-col>
       </v-row>

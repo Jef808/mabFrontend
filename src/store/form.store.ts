@@ -1,9 +1,9 @@
-import { computed, reactive, toRef, toRaw, ref, watch, type Ref } from "vue"
+import { computed, reactive, readonly, ref } from "vue"
 import { defineStore } from "pinia"
 import modelsData from "../data/models.json" assert { type: "json" }
 import policiesData from "../data/policies.json" assert { type: "json" }
 import optionsData from "../data/options.json" assert { type: "json" }
-import type { Parameter } from "@/data/types"
+import type { Model, Policy } from "@/data/types"
 
 export const useFormStore = defineStore("formStore", () => {
 
@@ -11,92 +11,74 @@ export const useFormStore = defineStore("formStore", () => {
     const policies = reactive(policiesData);
     const options = reactive(optionsData);
 
-    function showRaw() {
-        console.log("models: ", JSON.stringify(toRaw(models), null, 2));
-        console.log("policies: ", JSON.stringify(toRaw(policies), null, 2));
-        console.log("options: ", JSON.stringify(toRaw(options), null, 2));
-    }
+    // SELECTED DATA
+    const selected = reactive({
+        model: models[0],
+        policy: policies[0],
+    } as { model: Model | undefined, policy: Policy | undefined });
+
+    const currentModel = ref(models[0].name);
+    const currentPolicy = ref(policies[0].name);
 
     // SELECTION DATA
     const modelSelectionItems = models.map(({ name, label }) => ({ name, label }));
     const policySelectionItems = policies.map(({ name, label }) => ({ name, label }));
-    const currentModel = ref(modelSelectionItems[0].name);
-    const currentPolicy = ref(policySelectionItems[0].name);
 
-    // PARAMETER VIEW DATA
-    const modelParametersProps = computed(() =>
-        models.find(e => e.name === currentModel.value)?.parameters.map((param) => {
-            const { value, name, label, ...sliderProps } = param;
-            return {
-                value,
-                name,
-                label,
-                sliderProps
-            }
-        }));
-    const policyParametersProps = computed(() =>
-        policies.find(e => e.name === currentPolicy.value)?.parameters.map((param) => {
-            const { value, name, label, ...sliderProps } = param;
-            return {
-                value,
-                name,
-                label,
-                sliderProps
-            }
-        }));
-    const optionsParametersProps = computed(() =>
-        options[0].parameters.map((param) => {
-            const { value, name, label, ...sliderProps } = param;
-            return {
-                value,
-                name,
-                label,
-                sliderProps
-            }
-        }));
+    // ON SELECTION
+    function onSelectModel(name: string) {
+        currentModel.value = name;
+        selected.model = (models.find(e => e.name === name) as Model);
+    }
+    function onSelectPolicy(name: string) {
+        currentPolicy.value = name;
+        selected.policy = (policies.find(e => e.name === name) as Policy);
+    }
 
-    // const modelsParametersValueRef = computed(() => {
-    //     const params = models.find(e => e.name === currentModel.value)?.parameters;
-    //     return params?.map((_, idx) => toRef(params[idx], "value"));
-    // });
-    // const policiesParametersValueRef = computed(() => {
-    //     const params = policies.find(e => e.name === currentModel.value)?.parameters;
-    //     return params?.map((_, idx) => toRef(params[idx], "value"));
-    // });
-    // // The options parameters array is a simple reactive array
-    // const optionsParametersValueRef = computed(() => {
-    //     const params = options.find(e => e.name === currentModel.value)?.parameters;
-    //     return params?.map((_, idx) => toRef(params[idx], "value"));
-    // });
-
+    // UNDERLYING OBJECTS GETTER
     const currentModelObject = computed(() => {
-        return models.find(e => e.name === currentModel.value);
+        let result = models.find(e => e.name === currentModel.value);
+        if (result === undefined) throw "Failed to retrieve current model object";
+        return result as Model;
     })
     const currentPolicyObject = computed(() => {
-        return policies.find(e => e.name === currentPolicy.value);
+        let result = policies.find(e => e.name === currentPolicy.value);
+        if (result === undefined) throw "Failed to retrieve current policy object";
+        return result as Policy;
     })
 
-    function updateCurrentModel(values: number[]) {
+    // PARAMETERS GETTERS
+    const modelParameters = computed(() => selected.model?.parameters)
+    const policyParameters = computed(() => selected.policy?.parameters);
+    const optionsParameters = readonly(options[0].parameters);
+    // const modelParameters = computed(() => currentModelObject.value.parameters);
+    // const policyParameters = computed(() => currentPolicyObject.value.parameters);
+    // const optionsParameters = readonly(options[0].parameters);
+
+    /**
+     * To be able to work with no metadata excepted the parameter values here, we enforce throughout
+     * that the `values` argument below represents properties in the `SAME` order as they
+     * appear in the `SelectionItems` objects.
+     *
+     * Since selections are the only events invalidating the `ordering` of those `ParametersProps`,
+     * and since in any case a change of selection should invalidate the partial filling of a form
+     * by a user, we can enforce this condition almost for free, without need to implement order checks everywhere.
+     */
+    function updateCurrentModel(values: (number | undefined)[]) {
         values.forEach((val, idx) => {
-            (currentModelObject.value?.parameters as Parameter[])[idx].value = val;
-        });
-        // currentModelObject.value?.parameters
-        //     .forEach((p, idx) => p.value = values[idx]);
+            currentModelObject.value.parameters[idx].value = val as number;
+        })
     }
-    function updateCurrentPolicy(values: number[]) {
+    function updateCurrentPolicy(values: (number | undefined)[]) {
         values.forEach((val, idx) => {
-            (currentPolicyObject.value?.parameters as Parameter[])[idx].value = val;
+            currentPolicyObject.value.parameters[idx].value = val as number;
         });
-    }
-    function updateCurrentOptions(values: number[]) {
-        values.forEach((val, idx) => { options[0].parameters[idx].value = val; });
     }
 
-    // function onUpdateAll(modelValues: number[], policyValues: number[], optionsValues: number[]) {
-    //     updateCurrentModel(modelValues);
-    //     updateCurrentPolicy(modelValues);
-    //     updateCurrentOptions(modelValues);
-    // }
+    function updateCurrentOptions(values: (number | undefined)[]) {
+        values.forEach((val, idx) => {
+            options[0].parameters[idx].value = val as number;
+        })
+    }
 
     function onUpdate(category: "model" | "policy" | "options", values: number[]) {
         switch (category) {
@@ -106,14 +88,22 @@ export const useFormStore = defineStore("formStore", () => {
         }
     }
 
+    const showRaw = computed(() => "models: " + JSON.stringify(models, null, 2)
+        + "\npolicies: " + JSON.stringify(policies, null, 2)
+        + "\noptions: " + JSON.stringify(options, null, 2));
+
     return {
+        initialModelName: models[0].name,
+        initialPolicyName: policies[0].name,
         modelSelectionItems,
         policySelectionItems,
+        onSelectModel,
+        onSelectPolicy,
         currentModel,
         currentPolicy,
-        modelParametersProps,
-        policyParametersProps,
-        optionsParametersProps,
+        modelParameters,
+        policyParameters,
+        optionsParameters,
         onUpdate,
         showRaw,
     };
