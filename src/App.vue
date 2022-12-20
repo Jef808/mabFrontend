@@ -7,7 +7,7 @@ import LineChart from "@/components/BarChart.vue";
 import fetchMockData from "@/scripts/fetchMockData";
 import { useFormStore } from "@/store/form.store";
 import { useQueryStore } from "@/store/query.store";
-import DataTextView from "@/components/DataTextView.vue";
+import QueryTextView from "@/components/QueryTextView.vue";
 import ParametersForm from "@/components/ParametersForm.vue";
 
 const store = useFormStore();
@@ -32,7 +32,7 @@ const { queryHistory, resultHistory } = storeToRefs(queryStore);
 
 onMounted(() => {});
 
-const debug = ref(false);
+const debug = ref(true);
 
 const chartSelectionItems = [
   {
@@ -143,28 +143,20 @@ function onSubmitQuery() {
           </v-row>
           <v-row v-if="debug">
             <v-col cols="6">
-              <p>
-                  <h2>Query History</h2>
-                  {{ queryHistory.length }} queries
-              </p>
+              <h2>Query History</h2>
+              {{ queryHistory.length }} queries
               <v-list>
                 <v-list-item v-for="(query, idx) in queryHistory" :key="idx">
-                  <DataTextView
-                    :query="query"
-                  ></DataTextView>
+                  <QueryTextView :query="query"></QueryTextView>
                 </v-list-item>
               </v-list>
             </v-col>
             <v-col cols="6">
-              <p>
-                  <h2>Result History</h2>
-                  {{ resultHistory.length }} results
-              </p>
+              <h2>Result History</h2>
+              {{ resultHistory.length }} results
               <v-list>
                 <v-list-item v-for="(result, idx) in resultHistory" :key="idx">
-                  <DataTextView
-                    :query="result"
-                  ></DataTextView>
+                  <QueryTextView :query="result"></QueryTextView>
                 </v-list-item>
               </v-list>
             </v-col>
@@ -175,10 +167,8 @@ function onSubmitQuery() {
             <v-form @submit.prevent="onSubmitQuery">
               <v-expansion-panels v-model="panel" v-on-click-outside="onCancel">
                 <v-expansion-panel value="model">
-                  <v-expansion-panel-title
-                    ><span class="text-grey"
-                      >MODEL</span
-                    ></v-expansion-panel-title
+                  <v-expansion-panel-title class="text-grey">
+                    >MODEL</v-expansion-panel-title
                   >
                   <v-expansion-panel-text>
                     <v-select
@@ -198,7 +188,9 @@ function onSubmitQuery() {
                   </v-expansion-panel-text>
                 </v-expansion-panel>
                 <v-expansion-panel value="policy">
-                  <v-expansion-panel-title>POLICY</v-expansion-panel-title>
+                  <v-expansion-panel-title class="text-grey"
+                    >POLICY</v-expansion-panel-title
+                  >
                   <v-expansion-panel-text>
                     <v-select
                       :model-value="selectedPolicy"
@@ -216,7 +208,9 @@ function onSubmitQuery() {
                   </v-expansion-panel-text>
                 </v-expansion-panel>
                 <v-expansion-panel value="options">
-                  <v-expansion-panel-title>OPTIONS</v-expansion-panel-title>
+                  <v-expansion-panel-title class="text-grey"
+                    >OPTIONS</v-expansion-panel-title
+                  >
                   <v-expansion-panel-text>
                     <ParametersForm
                       :items="optionsParameters"

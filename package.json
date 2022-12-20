@@ -10,6 +10,7 @@
     "@mdi/font": "7.0.96",
     "@vueuse/components": "^9.7.0",
     "chart.js": "^4.0.1",
+    "lodash.uniqueid": "^4.0.1",
     "pinia": "^2.0.28",
     "roboto-fontface": "*",
     "vue": "^3.2.38",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@babel/types": "^7.20.5",
+    "@types/lodash.uniqueid": "^4.0.7",
     "@types/node": "^18.11.9",
     "@types/webfontloader": "^1.6.35",
     "@types/zeromq": "^5.2.1",
