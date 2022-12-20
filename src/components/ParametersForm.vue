@@ -1,6 +1,6 @@
 <script lang="ts">
 export default {
-  name: "NumberForm",
+  name: "ParametersForm",
 };
 </script>
 
@@ -9,7 +9,7 @@ import { computed, reactive, ref, toRefs, onMounted, watch } from "vue";
 import type { Parameter } from "@/data/types";
 
 export interface Props {
-  dataName: string;
+  dataName?: string;
   items: {
     label: string;
     value: number;
@@ -19,23 +19,37 @@ export interface Props {
   }[];
 }
 
+interface Emits {
+  (e: "update", values: number[]): void;
+  (e: "cancel"): void;
+}
+
 const props = defineProps<Props>();
-const getModelValues = () => props.items.map(({ value }) => value);
-const modelValues = ref(getModelValues());
+const emit = defineEmits<Emits>();
 
-const name = computed(() => props.dataName);
+// local copy of each values into an array
+let modelValues = reactive(props.items.map(({ value }) => value));
 
-watch(name, (newName, oldName) => {
-  console.log("Form changed from ", oldName, " to ", newName);
-  modelValues.value = getModelValues();
-});
+// Repopulate `modelValues` upon change of data source
+// Note1: Cannot watch a property of a reactive object, so use a getter
+if (!!dataName) {
+  watch(
+    () => props.dataName,
+    (newName, oldName) => {
+      resetModelValues();
+    }
+  );
+}
+
+function onSave() {
+  emit("update", modelValues);
+}
+function onCancel() {
+  emit("cancel");
+}
 </script>
 
 <template>
-  <h4>Values:</h4>
-  <pre>{{ modelValues }}</pre>
-  <h4>props:</h4>
-  <pre>{{ JSON.stringify(props, null, 2) }}</pre>
   <v-form>
     <v-list lines="two">
       <v-list-item v-for="(item, idx) in items">
@@ -66,7 +80,7 @@ watch(name, (newName, oldName) => {
         </v-list-item-subtitle>
       </v-list-item>
     </v-list>
-    <v-btn color="success">Save</v-btn>
-    <v-btn color="error">Cancel</v-btn>
+    <v-btn color="success" @click="onSave">Save</v-btn>
+    <v-btn color="error" @click="onCancel">Cancel</v-btn>
   </v-form>
 </template>

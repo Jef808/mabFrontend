@@ -1,24 +1,22 @@
-export type ParameterArgs = {
+export type Parameter = {
     name: string;
     label: string;
     value: number;
-    min?: number;
-    max?: number;
+    min: number;
+    max: number;
     step: number;
 };
 
-export type Parameter = Required<ParameterArgs>;
-
-type dataModel = {
+type DataModel = {
     name: string;
     label: string;
     parameters: Parameter[];
 };
 
-export type Model = dataModel;
-export type Policy = dataModel;
-export type Options = dataModel;
-export type Category = "models" | "policies" | "options"
+export type Model = DataModel;
+export type Policy = DataModel;
+export type Options = DataModel;
+export type Category = "model" | "policy" | "options"
 
 export interface Series {
     data: number[];
@@ -30,3 +28,15 @@ export interface ChartData {
     labels: string[];
     datasets: Series[];
 }
+
+export interface DataQuery {
+    model: {
+        name: string,
+        parameters: { name: string, value: number }[]
+    },
+    policy: {
+        name: string,
+        parameters: { name: string, value: number }[]
+    },
+    options: { name: string, value: number }[]
+};
