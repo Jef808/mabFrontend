@@ -9,6 +9,7 @@ import { useFormStore } from "@/store/form.store";
 import { useQueryStore } from "@/store/query.store";
 import QueryTextView from "@/components/QueryTextView.vue";
 import ParametersForm from "@/components/ParametersForm.vue";
+import useIconExpanded from "@/scripts/useIconExpanded";
 
 const store = useFormStore();
 const queryStore = useQueryStore();
@@ -27,12 +28,13 @@ const {
 const { modelParameters, policyParameters, optionsParameters } =
   storeToRefs(store);
 
-const { submitQuery } = queryStore;
-const { queryHistory, resultHistory } = storeToRefs(queryStore);
+const { submitQuery, setWebSocketUrl, wsReset } = queryStore;
+const { queryHistory, resultHistory, wsStatus, wsUrl } =
+  storeToRefs(queryStore);
 
-onMounted(() => {});
-
+const wsUrlRef = ref(wsUrl);
 const debug = ref(true);
+const showWsInfo = ref(true);
 
 const chartSelectionItems = [
   {
@@ -106,6 +108,24 @@ function onSubmitQuery() {
   submitQuery();
   loading.value = false;
 }
+
+function onSubmitWsUrl() {
+  if (wsUrlRef.value === wsUrl.value) return;
+  setWebSocketUrl(wsUrlRef.value);
+}
+
+function onResetWs() {
+  wsReset();
+}
+
+const wsColor = computed(() => {
+  const { [`${wsStatus.value}`]: color } = {
+    OPEN: "green-lighten-4",
+    CONNECTING: "yellow-accent-1",
+    CLOSED: "red-darken-2",
+  };
+  return color;
+});
 </script>
 
 <template>
@@ -168,7 +188,7 @@ function onSubmitQuery() {
               <v-expansion-panels v-model="panel" v-on-click-outside="onCancel">
                 <v-expansion-panel value="model">
                   <v-expansion-panel-title class="text-grey">
-                    >MODEL</v-expansion-panel-title
+                    MODEL</v-expansion-panel-title
                   >
                   <v-expansion-panel-text>
                     <v-select
@@ -220,7 +240,9 @@ function onSubmitQuery() {
                   </v-expansion-panel-text>
                 </v-expansion-panel>
               </v-expansion-panels>
-              <v-btn type="submit" color="success">Submit</v-btn>
+              <v-container>
+                <v-btn type="submit" color="primary" block>Submit</v-btn>
+              </v-container>
             </v-form>
           </div>
           <v-checkbox
@@ -228,6 +250,43 @@ function onSubmitQuery() {
             v-model="debug"
             label="Debug Info"
           ></v-checkbox>
+          <v-container id="debug-tile" v-if="debug">
+            <v-expansion-panels>
+              <v-expansion-panel>
+                <v-expansion-panel-title :color="wsColor">
+                  <v-row>
+                    <v-col cols="6" class="d-flex align-center">
+                      <v-list-item-title>WebSocket Info</v-list-item-title>
+                    </v-col>
+                    <v-col cols="6" class="d-flex justify-center">
+                      <v-list-item title="Status" :subtitle="wsStatus">
+                      </v-list-item>
+                    </v-col>
+                  </v-row>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-form @submit.prevent="onSubmitWsUrl">
+                    <v-text-field label="Url" v-model="wsUrlRef"></v-text-field>
+                    <v-row>
+                      <v-col cols="12" class="d-flex justify-end space-between">
+                        <v-row>
+                          <v-spacer></v-spacer>
+                          <v-col cols="auto">
+                            <v-btn type="submit">Save</v-btn>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-btn type="button" @click="onResetWs"
+                              >Reset</v-btn
+                            >
+                          </v-col>
+                        </v-row>
+                      </v-col>
+                    </v-row>
+                  </v-form>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </v-container>
         </v-col>
       </v-row>
     </v-main>

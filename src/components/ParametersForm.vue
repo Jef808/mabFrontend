@@ -24,7 +24,9 @@ interface Emits {
   (e: "cancel"): void;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  dataName: "",
+});
 const emit = defineEmits<Emits>();
 
 // local copy of each values into an array
@@ -32,13 +34,15 @@ let modelValues = reactive(props.items.map(({ value }) => value));
 
 // Repopulate `modelValues` upon change of data source
 // Note1: Cannot watch a property of a reactive object, so use a getter
-if (!!dataName) {
-  watch(
-    () => props.dataName,
-    (newName, oldName) => {
-      resetModelValues();
-    }
-  );
+watch(
+  () => props.dataName,
+  (newName, oldName) => {
+    resetModelValues();
+  }
+);
+
+function resetModelValues() {
+  modelValues.forEach((value, idx) => (value = props.items[idx].value));
 }
 
 function onSave() {
