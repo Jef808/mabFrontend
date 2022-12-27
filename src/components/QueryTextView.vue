@@ -33,42 +33,43 @@ const optionsParameters = computed(() => {
   <v-card variant="outlined">
     <v-list>
       <v-list-subheader title="Model"> </v-list-subheader>
-      <v-list-item-group>
+      <v-item-group>
         <v-card>
           <v-list-item
             v-for="param in modelParameters"
-            v-slot="{ isSelected, selectedClass, toggle }"
             :title="param.name"
             :subtitle="param.value"
             :value="param.value"
           >
           </v-list-item>
         </v-card>
-      </v-list-item-group>
+      </v-item-group>
       <v-list-subheader title="Policy"></v-list-subheader>
-      <v-card>
-        <v-list-item
-          v-for="param in policyParameters"
-          v-slot="{ isSelected, selectedClass, toggle }"
-          :key="param.name"
-          :title="param.name"
-          :subtitle="param.value"
-          :value="param.value"
-        >
-        </v-list-item>
-      </v-card>
+      <v-item-group>
+        <v-card>
+          <v-list-item
+            v-for="param in policyParameters"
+            :key="param.name"
+            :title="param.name"
+            :subtitle="param.value"
+            :value="param.value"
+          >
+          </v-list-item>
+        </v-card>
+      </v-item-group>
       <v-list-subheader title="Options"></v-list-subheader>
-      <v-card>
-        <v-list-item
-          v-for="param in optionsParameters"
-          v-slot="{ isSelected, selectedClass, toggle }"
-          :key="param.name"
-          :title="param.name"
-          :subtitle="param.value"
-          :value="param.value"
-        >
-        </v-list-item>
-      </v-card>
+      <v-item-group>
+        <v-card>
+          <v-list-item
+            v-for="param in optionsParameters"
+            :key="param.name"
+            :title="param.name"
+            :subtitle="param.value"
+            :value="param.value"
+          >
+          </v-list-item>
+        </v-card>
+      </v-item-group>
     </v-list>
   </v-card>
 </template>

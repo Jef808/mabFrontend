@@ -1,16 +1,24 @@
 [
-    {
-        "name": "options",
-        "label": "Options",
-        "parameters": [
-            {
-                "name": "nbOfSteps",
-                "label": "Number of Steps",
-                "value": 1,
-                "min": 1,
-                "max": 2000,
-                "step": 1
-            }
-        ]
-    }
+  {
+    "name": "options",
+    "label": "Options",
+    "parameters": [
+      {
+        "name": "nbOfSteps",
+        "label": "Number of Steps",
+        "value": 1,
+        "min": 1,
+        "max": 2000,
+        "step": 1
+      },
+      {
+        "name": "averagingWindowSize",
+        "label": "Size of Averaging Window",
+        "value": 1,
+        "min": 1,
+        "max": 2000,
+        "step": 1
+      }
+    ]
+  }
 ]

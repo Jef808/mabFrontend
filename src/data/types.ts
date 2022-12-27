@@ -76,4 +76,4 @@ export interface QueryResult {
     };
 }
 
-export type WithId<T> = T & { id: string | number };
+export type WithId<T> = T & { id: string };

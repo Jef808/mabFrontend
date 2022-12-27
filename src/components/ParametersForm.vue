@@ -20,12 +20,12 @@ export interface Props {
 }
 
 interface Emits {
-  (e: "update", values: number[]): void;
+  (e: "change", values: number[]): void;
   (e: "cancel"): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  dataName: "",
+  dataName: "options",
 });
 const emit = defineEmits<Emits>();
 
@@ -46,7 +46,7 @@ function resetModelValues() {
 }
 
 function onSave() {
-  emit("update", modelValues);
+  emit("change", modelValues);
 }
 function onCancel() {
   emit("cancel");

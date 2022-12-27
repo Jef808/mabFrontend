@@ -3,11 +3,7 @@ import { readonly, ref, watch, type Ref, shallowReactive } from "vue";
 import { useWebSocket } from "@vueuse/core";
 import { defineStore } from "pinia";
 import { useFormStore } from "@/store/form.store";
-import type {
-    DataQuery,
-    QueryResult,
-    WithId,
-} from "@/data/types";
+import type { DataQuery, QueryResult, WithId, Model, Policy, Options } from "@/data/types";
 
 const getQuery = (): DataQuery => {
     const {
@@ -18,14 +14,14 @@ const getQuery = (): DataQuery => {
     return {
         modelName,
         modelParameters: Object.fromEntries(
-            mParameters.map((param) => [param.name, param.value])
+          mParameters.map((param) => [param.name, param.value])
         ),
         policyName,
         policyParameters: Object.fromEntries(
-            pParameters.map((param) => [param.name, param.value])
+          pParameters.map((param) => [param.name, param.value])
         ),
         options: Object.fromEntries(
-            oParameters.map((param) => [param.name, param.value])
+          oParameters.map((param) => [param.name, param.value])
         ),
     };
 };
@@ -34,60 +30,60 @@ export const useQueryStore = defineStore("queryStore", () => {
     const queryHistory = shallowReactive([] as WithId<DataQuery>[]);
     const resultHistory = shallowReactive([] as WithId<QueryResult>[]);
 
-    let currentResult: Ref<string | number>;
+    const currentResult = ref("");
 
     const wsUrl = ref("ws://localhost:8080");
 
     // A websocket for two-way communication with the backend
-    const { status: wsStatus, data: wsData, send: wsSend, open: wsOpen, close: wsClose, ws } = useWebSocket(
-        wsUrl.value,
-        {
-            autoReconnect: true,// {
-            // retries: -1,
-            // delay: 2000,
-            // onFailed() {
-            //     console.error("Failed to connect WebSocket after 3 retries");
-            // },
-            // },
-            heartbeat: {
-                message: "ping",
-                interval: 1500,
-                pongTimeout: 1500,
-            },
-            onConnected: (ws) => {
-                console.log(
-                    "Successfully connected to WebSocket at ", wsUrl.value
-                );
-            },
-            onMessage: (ws, event) => {
-                console.log("Received", event);
-                resultHistory.push(JSON.parse(event.data));
-            },
-            onDisconnected: (ws: WebSocket, event: CloseEvent) => {
-                console.warn("Web Socket Disconncted", event);
-            },
-            onError: (ws, event) => {
-                console.error(event);
+    const {
+        status: wsStatus,
+        data: wsData,
+        send: wsSend,
+        open: wsOpen,
+        close,
+        ws
+    } = useWebSocket(wsUrl.value, {
+        autoReconnect: true, // {
+        // retries: -1,
+        // delay: 2000,
+        // onFailed() {
+        //     console.error("Failed to connect WebSocket after 3 retries");
+        // },
+        // },
+        heartbeat: {
+            message: "ping",
+            interval: 5000,
+            pongTimeout: 5000,
+        },
+        onConnected: () => {
+            console.log("Successfully connected to WebSocket at ", wsUrl.value);
+        },
+        onMessage: (_, event) => {
+            try {
+              resultHistory.push(JSON.parse(event.data));
+              currentResult.value = event.data.id;
+              console.log("Received", event);
             }
-        }
-    );
+            catch (err) {
+              console.error("Failed to parse data of response", event);
+            }
+        },
+        onDisconnected: (_: WebSocket, event: CloseEvent) => {
+            console.warn("Web Socket Disconncted", event);
+        },
+        onError: (_, event) => {
+            console.error(event);
+        },
+    });
 
     function wsReset() {
         wsUrl.value = "ws://localhost:8080";
+        if (wsStatus.value !== "CLOSED") close(undefined, "Explicit Reset");
         wsOpen();
     }
-
-    /**
-     * Watch the results list for changes
-     */
-    watch(
-        () => resultHistory,
-        (value: WithId<QueryResult>[], oldValue) => {
-            value
-                .slice(oldValue.length)
-                .forEach((res) => console.log("New Result: ", res));
-        }
-    );
+    function wsClose(reason?: string) {
+        close(undefined, reason);
+    }
 
     /**
      * Send the curent query to the backend through the WebSocket
@@ -97,43 +93,68 @@ export const useQueryStore = defineStore("queryStore", () => {
         const nbQueries = queryHistory.length;
 
         const previousEntry = queryHistory.find((q) => {
-            const { id, ...rest } = q;
-            return rest === query;
+          if (query.modelName !== q.modelName
+            || query.policyName !== q.policyName) {
+              return false;
+            }
+          if (!Object.entries(query.modelParameters)
+            .every((keyVal) => q.modelParameters[keyVal[0] as keyof Model] === keyVal[1])) {
+            return false;
+          }
+          if (!Object.entries(query.policyParameters)
+            .every((keyVal) => q.policyParameters[keyVal[0] as keyof Policy] === keyVal[1])) {
+            return false;
+          }
+          if (!Object.entries(query.options)
+             .every((keyVal) => q.options[keyVal[0] as keyof Options] === keyVal[1])) {
+            return false;
+          }
+          return true;
         });
 
-        // Do nothing if the query has already been processed
+        // Do not resend the query if it was previously computed.
         if (previousEntry !== undefined) {
+            console.log("Found query in cache");
             currentResult.value = previousEntry.id;
             return;
         }
 
+        // Otherwise, send the query through the websocket (if its status is okay).
         if (wsStatus.value !== "OPEN") {
-            console.warn("submitQuery called with non-open websocket, query will be buffered", ws);
+            console.warn(
+                "submitQuery called with non-open websocket, query will be buffered",
+                ws
+            );
         }
 
         try {
             const queryWithId = { id: uniqueId("query-"), ...query };
-            if (wsSend(JSON.stringify(queryWithId))) {
-                queryHistory.push(queryWithId);
-                console.log("Sent query", queryWithId.id);
-            }
+            wsSend(JSON.stringify(queryWithId));
+            queryHistory.push(queryWithId);
+            console.log("Sent query", queryWithId.id);
         } catch (err) {
-            console.error("Error while sending query", query);
+            console.error("Error while sending query", err);
             queryHistory.length = nbQueries;
+            if (resultHistory.length !== queryHistory.length) {
+                console.warn(
+                    "WARNING: query.store.ts: 'resultHistory' stack is out of sync with queryHistory"
+                );
+            }
         }
     }
 
     const setWebSocketUrl = (url: string) => {
         wsUrl.value = url;
-    }
+    };
 
     return {
+        wsClose,
         wsReset,
-        wsStatus,
+        wsStatus: readonly(wsStatus),
         wsUrl: readonly(wsUrl),
         submitQuery,
-        queryHistory,
-        resultHistory,
+        queryHistory: readonly(queryHistory),
+        resultHistory: readonly(resultHistory),
         setWebSocketUrl,
     };
 });

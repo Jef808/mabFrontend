@@ -28,7 +28,7 @@ const {
 const { modelParameters, policyParameters, optionsParameters } =
   storeToRefs(store);
 
-const { submitQuery, setWebSocketUrl, wsReset } = queryStore;
+const { submitQuery, setWebSocketUrl, wsReset, wsClose } = queryStore;
 const { queryHistory, resultHistory, wsStatus, wsUrl } =
   storeToRefs(queryStore);
 
@@ -80,7 +80,7 @@ function selectPolicy(name: string) {
 const formId = computed(() => {
   let result = {
     model: `model-${selectedModel.value}`,
-    policy: `policy-${selectedPolicy.value}`,
+     policy: `policy-${selectedPolicy.value}`,
   };
   console.log("formId: ", result.model, result.policy);
   return result;
@@ -116,6 +116,10 @@ function onSubmitWsUrl() {
 
 function onResetWs() {
   wsReset();
+}
+
+function onCloseWs() {
+  wsClose("Explicit Stop");
 }
 
 const wsColor = computed(() => {
@@ -186,10 +190,10 @@ const wsColor = computed(() => {
           <div class="form-container">
             <v-form @submit.prevent="onSubmitQuery">
               <v-expansion-panels v-model="panel" v-on-click-outside="onCancel">
-                <v-expansion-panel value="model">
-                  <v-expansion-panel-title class="text-grey">
-                    MODEL</v-expansion-panel-title
-                  >
+                <v-expansion-panel value="model" title="MODEL">
+                  <!-- <v-expansion-panel-title class="text-grey">
+                       MODEL</v-expansion-panel-title
+                       > -->
                   <v-expansion-panel-text>
                     <v-select
                       :model-value="selectedModel"
@@ -202,15 +206,15 @@ const wsColor = computed(() => {
                     <ParametersForm
                       :data-name="selectedModel"
                       :items="modelParameters"
-                      @update="updateModel"
+                      @change="updateModel"
                       @cancel="onCancel"
                     ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
-                <v-expansion-panel value="policy">
-                  <v-expansion-panel-title class="text-grey"
-                    >POLICY</v-expansion-panel-title
-                  >
+                <v-expansion-panel value="policy" title="POLICY">
+                  <!-- <v-expansion-panel-title class="text-grey"
+                       >POLICY</v-expansion-panel-title
+                       > -->
                   <v-expansion-panel-text>
                     <v-select
                       :model-value="selectedPolicy"
@@ -222,19 +226,16 @@ const wsColor = computed(() => {
                     <ParametersForm
                       :data-name="selectedPolicy"
                       :items="policyParameters"
-                      @update="updatePolicy"
+                      @change="updatePolicy"
                       @cancel="onCancel"
                     ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
-                <v-expansion-panel value="options">
-                  <v-expansion-panel-title class="text-grey"
-                    >OPTIONS</v-expansion-panel-title
-                  >
+                <v-expansion-panel value="options" title="OPTIONS">
                   <v-expansion-panel-text>
                     <ParametersForm
                       :items="optionsParameters"
-                      @update="updateOptions"
+                      @change="updateOptions"
                       @cancel="onCancel"
                     ></ParametersForm>
                   </v-expansion-panel-text>
@@ -250,7 +251,7 @@ const wsColor = computed(() => {
             v-model="debug"
             label="Debug Info"
           ></v-checkbox>
-          <v-container id="debug-tile" v-if="debug">
+          <v-container id="websocket-tile">
             <v-expansion-panels>
               <v-expansion-panel>
                 <v-expansion-panel-title :color="wsColor">
@@ -272,12 +273,15 @@ const wsColor = computed(() => {
                         <v-row>
                           <v-spacer></v-spacer>
                           <v-col cols="auto">
-                            <v-btn type="submit">Save</v-btn>
-                          </v-col>
-                          <v-col cols="auto">
                             <v-btn type="button" @click="onResetWs"
                               >Reset</v-btn
                             >
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-btn type="button" @click="onCloseWs">Stop</v-btn>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-btn type="submit">Save</v-btn>
                           </v-col>
                         </v-row>
                       </v-col>
