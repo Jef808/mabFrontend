@@ -10,6 +10,7 @@ import { useQueryStore } from "@/store/query.store";
 import QueryTextView from "@/components/QueryTextView.vue";
 import ParametersForm from "@/components/ParametersForm.vue";
 import useIconExpanded from "@/scripts/useIconExpanded";
+import { rollup } from "@/scripts/formatSeries";
 
 const store = useFormStore();
 const queryStore = useQueryStore();
@@ -180,7 +181,7 @@ const wsColor = computed(() => {
               {{ resultHistory.length }} results
               <v-list>
                 <v-list-item v-for="(result, idx) in resultHistory" :key="idx">
-                  <QueryTextView :query="result"></QueryTextView>
+                  <pre>{{ rollup(result.series) }}</pre>
                 </v-list-item>
               </v-list>
             </v-col>

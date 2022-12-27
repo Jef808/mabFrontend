@@ -59,14 +59,16 @@ export const useQueryStore = defineStore("queryStore", () => {
             console.log("Successfully connected to WebSocket at ", wsUrl.value);
         },
         onMessage: (_, event) => {
-            try {
-              resultHistory.push(JSON.parse(event.data));
-              currentResult.value = event.data.id;
-              console.log("Received", event);
-            }
-            catch (err) {
-              console.error("Failed to parse data of response", event);
-            }
+          if (event.data === "pong")
+            return;
+          try {
+            resultHistory.push(JSON.parse(event.data));
+            currentResult.value = event.data.id;
+            console.log("Received", event);
+          }
+          catch (err) {
+            console.error("Failed to parse data of response", event);
+          }
         },
         onDisconnected: (_: WebSocket, event: CloseEvent) => {
             console.warn("Web Socket Disconncted", event);

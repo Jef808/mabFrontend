@@ -29,27 +29,6 @@ export interface ChartData {
     datasets: Series[];
 }
 
-export interface DataQueryV1 {
-    model: {
-        name: string;
-        parameters: {
-            name: string;
-            value: number;
-        }[];
-    };
-    policy: {
-        name: string;
-        parameters: {
-            name: string;
-            value: number;
-        }[];
-    };
-    options: {
-        name: string;
-        value: number;
-    }[];
-}
-
 export interface DataQuery {
     modelName: string;
     modelParameters: {
@@ -69,7 +48,7 @@ export interface QueryResult {
     series: {
         [name: string]: [
             {
-                step: number;
+                action: number;
                 value: number;
             }
         ];
