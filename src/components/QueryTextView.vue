@@ -6,12 +6,14 @@ export interface Props {
 }
 const props = defineProps<Props>();
 
-const toNamedValue = (obj: object) => {
-  const NamedValue = Object.entries(obj);
-  return { name: NamedModel[0], value: NamedModel[1] };
-};
+ // const toNamedValue = (obj: object) => {
+ //   const NamedValue = Object.entries(obj);
+ //   return { name: NamedModel[0], value: NamedModel[1] };
+ // };
 
-const extractParameters = (queryParams) => {
+// Converts any object { objName: objValue } into
+// the 'named' object { name: objName, value: objValue }.
+const extractParameters = (queryParams: Record<string, number>) => {
   return Object.entries(queryParams).map((p) => {
     const [name, value] = p;
     return { name, value };

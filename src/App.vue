@@ -1,139 +1,137 @@
 <script setup lang="ts">
-import { computed, isReactive, isRef, reactive, ref, onMounted } from "vue";
-import { vOnClickOutside } from "@vueuse/components";
-import { storeToRefs } from "pinia";
-import BarChart from "@/components/BarChart.vue";
-import LineChart from "@/components/BarChart.vue";
-import fetchMockData from "@/scripts/fetchMockData";
-import { useFormStore } from "@/store/form.store";
-import { useQueryStore } from "@/store/query.store";
-import QueryTextView from "@/components/QueryTextView.vue";
-import ParametersForm from "@/components/ParametersForm.vue";
-import useIconExpanded from "@/scripts/useIconExpanded";
-import { rollup } from "@/scripts/formatSeries";
+ import { computed, isReactive, isRef, reactive, ref, onMounted } from "vue";
+ import { vOnClickOutside } from "@vueuse/components";
+ import { storeToRefs } from "pinia";
+ import fetchMockData from "@/scripts/fetchMockData";
+ import { useFormStore } from "@/store/form.store";
+ import { useQueryStore } from "@/store/query.store";
+ import QueryTextView from "@/components/QueryTextView.vue";
+ import ParametersForm from "@/components/ParametersForm.vue";
+ import useIconExpanded from "@/scripts/useIconExpanded";
+ import D3LineChart from "@/components/D3LineChart.vue"
 
-const store = useFormStore();
-const queryStore = useQueryStore();
+ const store = useFormStore();
+ const queryStore = useQueryStore();
 
-const {
-  initialModelName,
-  initialPolicyName,
-  modelSelectionItems,
-  policySelectionItems,
-  onUpdate,
-  showRaw,
-  onSelectModel,
-  onSelectPolicy,
-} = store;
+ const {
+   initialModelName,
+   initialPolicyName,
+   modelSelectionItems,
+   policySelectionItems,
+   onUpdate,
+   showRaw,
+   onSelectModel,
+   onSelectPolicy,
+ } = store;
 
-const { modelParameters, policyParameters, optionsParameters } =
-  storeToRefs(store);
+ const { modelParameters, policyParameters, optionsParameters } =
+   storeToRefs(store);
 
-const { submitQuery, setWebSocketUrl, wsReset, wsClose } = queryStore;
-const { queryHistory, resultHistory, wsStatus, wsUrl } =
-  storeToRefs(queryStore);
+ const { submitQuery, setWebSocketUrl, wsReset, wsClose } = queryStore;
+ const { queryHistory, resultHistory, wsStatus, wsUrl } =
+   storeToRefs(queryStore);
 
-const wsUrlRef = ref(wsUrl);
-const debug = ref(true);
-const showWsInfo = ref(true);
+ const wsUrlRef = ref(wsUrl);
+ const debug = ref(true);
+ const showWsInfo = ref(true);
 
-const chartSelectionItems = [
-  {
-    name: "bar-chart",
-    label: "Bar Chart",
-  },
-  {
-    name: "line-chart",
-    label: "Line Chart",
-  },
-];
-const chartType = ref("bar-chart");
-const chartComponent = computed(() => {
-  return chartType.value === "bar-chart" ? BarChart : LineChart;
-});
-const chartDataGetter = computed(() => {
-  return chartType.value === "bar-chart"
-    ? () => fetchMockData("BAR")
-    : () => fetchMockData("LINE");
-});
+ const chartData = [
+   {
+     title: 'Rewards',
+     values: [ {step: 1, value: 0.5}, {step: 0.2, value: 0.8} ]
+   }
+ ];
 
-const chartOptions = {
-  reponsive: true,
-  maintainAspectRatio: false,
-};
+ const loading = ref(false);
+ const panel = ref("");
 
-const loading = ref(false);
-const panel = ref("");
+ const selectedModel = ref(initialModelName);
+ const selectedPolicy = ref(initialPolicyName);
 
-const selectedModel = ref(initialModelName);
-const selectedPolicy = ref(initialPolicyName);
+ function selectModel(name: string) {
+   selectedModel.value = name;
+   onSelectModel(name);
+ }
+ function selectPolicy(name: string) {
+   selectedPolicy.value = name;
+   onSelectPolicy(name);
+ }
 
-function selectModel(name: string) {
-  selectedModel.value = name;
-  onSelectModel(name);
-}
-function selectPolicy(name: string) {
-  selectedPolicy.value = name;
-  onSelectPolicy(name);
-}
-
-// Unique id generated in order to distinguish different forms
-const formId = computed(() => {
-  let result = {
-    model: `model-${selectedModel.value}`,
+ // Unique id generated in order to distinguish different forms
+ const formId = computed(() => {
+   let result = {
+     model: `model-${selectedModel.value}`,
      policy: `policy-${selectedPolicy.value}`,
-  };
-  console.log("formId: ", result.model, result.policy);
-  return result;
-});
+   };
+   console.log("formId: ", result.model, result.policy);
+   return result;
+ });
 
-function updateModel(values: number[]) {
-  onUpdate("model", values);
-  panel.value = "policy";
-}
-function updatePolicy(values: number[]) {
-  onUpdate("policy", values);
-  panel.value = "options";
-}
-function updateOptions(values: number[]) {
-  onUpdate("options", values);
-  panel.value = "";
-}
+ function updateModel(values: number[]) {
+   onUpdate("model", values);
+   panel.value = "policy";
+ }
+ function updatePolicy(values: number[]) {
+   onUpdate("policy", values);
+   panel.value = "options";
+ }
+ function updateOptions(values: number[]) {
+   onUpdate("options", values);
+   panel.value = "";
+ }
 
-function onCancel() {
-  panel.value = "";
-}
+ function onCancel() {
+   panel.value = "";
+ }
 
-function onSubmitQuery() {
-  loading.value = true;
-  submitQuery();
-  loading.value = false;
-}
+ function onSubmitQuery() {
+   loading.value = true;
+   submitQuery();
+   loading.value = false;
+ }
 
-function onSubmitWsUrl() {
-  if (wsUrlRef.value === wsUrl.value) return;
-  setWebSocketUrl(wsUrlRef.value);
-}
+ function onSubmitWsUrl() {
+   if (wsUrlRef.value === wsUrl.value) return;
+   setWebSocketUrl(wsUrlRef.value);
+ }
 
-function onResetWs() {
-  wsReset();
-}
+ function onResetWs() {
+   wsReset();
+ }
 
-function onCloseWs() {
-  wsClose("Explicit Stop");
-}
+ function onCloseWs() {
+   wsClose("Explicit Stop");
+ }
 
-const wsColor = computed(() => {
-  const { [`${wsStatus.value}`]: color } = {
-    OPEN: "green-lighten-4",
-    CONNECTING: "yellow-accent-1",
-    CLOSED: "red-darken-2",
-  };
-  return color;
-});
+ const wsColor = computed(() => {
+   const { [`${wsStatus.value}`]: color } = {
+     OPEN: "green-lighten-4",
+     CONNECTING: "yellow-accent-1",
+     CLOSED: "red-darken-2",
+   };
+   return color;
+ });
+
+ const nextTasks = reactive([
+   {
+     desc: "Hook queryResult objects to the D3LineChart component",
+     done: false
+   },
+   {
+     desc: "Add axis into D3LineChart",
+     done: false
+   }
+ ]);
+
 </script>
 
 <template>
+  <h1>Next tasks:</h1>
+  <ol>
+    <li v-for="task in nextTasks">
+      <pre>[{{ task.done ? "X" : " " }}] - {{ task.desc }}</pre>
+    </li>
+  </ol>
   <v-app>
     <v-main>
       <v-row>
@@ -141,27 +139,10 @@ const wsColor = computed(() => {
           <v-row>
             <v-col cols="auto">
               <v-container>
-                <v-select
-                  v-model="chartType"
-                  :items="chartSelectionItems"
-                  item-title="label"
-                  item-value="name"
-                >
-                </v-select>
                 <div>
-                  <Suspense
-                    @pending="loading = true"
-                    @resolve="loading = false"
-                  >
-                    <component
-                      :is="chartComponent"
-                      :chartDataGetter="chartDataGetter"
-                      :chartOptions="chartOptions"
-                    />
-                    <template #fallback>
-                      <div>Loading...</div>
-                    </template>
-                  </Suspense>
+                  <D3LineChart
+                    :data="chartData"
+                  ></D3LineChart>
                 </div>
               </v-container>
             </v-col>
@@ -181,7 +162,8 @@ const wsColor = computed(() => {
               {{ resultHistory.length }} results
               <v-list>
                 <v-list-item v-for="(result, idx) in resultHistory" :key="idx">
-                  <pre>{{ rollup(result.series) }}</pre>
+                  <pre>{{ result.series
+                       }}</pre>
                 </v-list-item>
               </v-list>
             </v-col>

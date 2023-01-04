@@ -43,13 +43,14 @@ export const useQueryStore = defineStore("queryStore", () => {
         close,
         ws
     } = useWebSocket(wsUrl.value, {
-        autoReconnect: true, // {
-        // retries: -1,
-        // delay: 2000,
-        // onFailed() {
-        //     console.error("Failed to connect WebSocket after 3 retries");
-        // },
-        // },
+        autoReconnect:
+        {
+            retries: -1,
+            delay: 2000,
+            onFailed() {
+                console.error("Failed to connect WebSocket after 3 retries");
+            },
+        },
         heartbeat: {
             message: "ping",
             interval: 5000,
@@ -158,5 +159,6 @@ export const useQueryStore = defineStore("queryStore", () => {
         queryHistory: readonly(queryHistory),
         resultHistory: readonly(resultHistory),
         setWebSocketUrl,
+
     };
 });

@@ -31,28 +31,24 @@ export interface ChartData {
 
 export interface DataQuery {
     modelName: string;
-    modelParameters: {
+    modelParameters: [{
         [name: string]: number;
-    };
+    }];
     policyName: string;
-    policyParameters: {
+    policyParameters: [{
         [name: string]: number;
-    };
-    options: {
+    }];
+    options: [{
         [name: string]: number;
-    };
+    }];
 }
 
 export interface QueryResult {
     id: number | string;
-    series: {
-        [name: string]: [
-            {
-                action: number;
-                value: number;
-            }
-        ];
-    };
+    data: [{
+        title: string;
+        values: [{  }]
+        }];
 }
 
 export type WithId<T> = T & { id: string };
