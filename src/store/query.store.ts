@@ -3,6 +3,7 @@ import { readonly, ref, watch, type Ref, shallowReactive } from "vue";
 import { useWebSocket } from "@vueuse/core";
 import { defineStore } from "pinia";
 import { useFormStore } from "@/store/form.store";
+import { validateMsgFront2Back, validateMsgBack2Front } from "@/scripts/messageValidators";
 import type { DataQuery, QueryResult, WithId, Model, Policy, Options } from "@/data/types";
 
 const getQuery = (): DataQuery => {
@@ -63,7 +64,18 @@ export const useQueryStore = defineStore("queryStore", () => {
           if (event.data === "pong")
             return;
           try {
-            resultHistory.push(JSON.parse(event.data));
+            const rep = event.data;
+
+            const validationResult = validateMsgBack2Front(rep);
+
+            if (validationResult !== 'Ok') {
+                console.error(`${validationResult}\n${JSON.stringify(rep, null, 2)}`);
+            }
+            else {
+                console.log(validationResult);
+            }
+
+            resultHistory.push(JSON.parse(rep));
             currentResult.value = event.data.id;
             console.log("Received", event);
           }
@@ -132,7 +144,18 @@ export const useQueryStore = defineStore("queryStore", () => {
 
         try {
             const queryWithId = { id: uniqueId("query-"), ...query };
-            wsSend(JSON.stringify(queryWithId));
+
+            const req = JSON.stringify(queryWithId);
+            const validationResult = validateMsgFront2Back(req);
+
+            if (validationResult !== 'Ok') {
+                console.error(`${validationResult}\n${req}`);
+            }
+            else {
+                console.log(validationResult);
+            }
+
+            wsSend(req);
             queryHistory.push(queryWithId);
             console.log("Sent query", queryWithId.id);
         } catch (err) {

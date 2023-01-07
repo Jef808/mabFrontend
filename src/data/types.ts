@@ -44,11 +44,11 @@ export interface DataQuery {
 }
 
 export interface QueryResult {
-    id: number | string;
-    data: [{
-        title: string;
-        values: [{  }]
-        }];
+    id: string;
+    data: {
+        name: string;
+        values: [number, number];
+        }[];
 }
 
 export type WithId<T> = T & { id: string };
