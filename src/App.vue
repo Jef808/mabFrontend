@@ -1,14 +1,13 @@
 <script setup lang="ts">
- import { computed, isReactive, isRef, reactive, ref, onMounted } from "vue";
+ import { computed, reactive, ref, onMounted } from "vue";
  import { vOnClickOutside } from "@vueuse/components";
  import { storeToRefs } from "pinia";
- import fetchMockData from "@/scripts/fetchMockData";
  import { useFormStore } from "@/store/form.store";
- import { useQueryStore } from "@/store/query.store";
+ import { getQuery, useQueryStore } from "@/store/query.store";
  import QueryTextView from "@/components/QueryTextView.vue";
  import ParametersForm from "@/components/ParametersForm.vue";
- import useIconExpanded from "@/scripts/useIconExpanded";
- import D3LineChart from "@/components/D3LineChart.vue"
+ import D3LineChart from "@/components/D3LineChart.vue";
+ import type { QueryResult } from "@/data/types";
 
  const store = useFormStore();
  const queryStore = useQueryStore();
@@ -28,25 +27,25 @@
    storeToRefs(store);
 
  const { submitQuery, setWebSocketUrl, wsReset, wsClose } = queryStore;
- const { queryHistory, resultHistory, wsStatus, wsUrl } =
+ const { queryHistory, resultHistory, currentResult, wsStatus, wsUrl } =
    storeToRefs(queryStore);
 
  const wsUrlRef = ref(wsUrl);
  const debug = ref(true);
  const showWsInfo = ref(true);
 
- const chartData = [
-   {
-     title: 'Rewards',
-     values: [ {step: 1, value: 0.5}, {step: 0.2, value: 0.8} ]
-   }
- ];
-
- const loading = ref(false);
  const panel = ref("");
 
  const selectedModel = ref(initialModelName);
  const selectedPolicy = ref(initialPolicyName);
+
+ const haveResult = computed(() => {
+     const ret = currentResult.value !== undefined && currentResult.value !== "";
+     if (ret) {
+         console.log("Have result: ", currentResult.value);
+     }
+     return ret;
+ });
 
  function selectModel(name: string) {
    selectedModel.value = name;
@@ -56,16 +55,6 @@
    selectedPolicy.value = name;
    onSelectPolicy(name);
  }
-
- // Unique id generated in order to distinguish different forms
- const formId = computed(() => {
-   let result = {
-     model: `model-${selectedModel.value}`,
-     policy: `policy-${selectedPolicy.value}`,
-   };
-   console.log("formId: ", result.model, result.policy);
-   return result;
- });
 
  function updateModel(values: number[]) {
    onUpdate("model", values);
@@ -85,9 +74,9 @@
  }
 
  function onSubmitQuery() {
-   loading.value = true;
-   submitQuery();
-   loading.value = false;
+   const query = getQuery();
+   console.log("Submiting query", query);
+   submitQuery(query);
  }
 
  function onSubmitWsUrl() {
@@ -112,60 +101,73 @@
    return color;
  });
 
- const nextTasks = reactive([
-   {
-     desc: "Hook queryResult objects to the D3LineChart component",
-     done: false
-   },
-   {
-     desc: "Add axis into D3LineChart",
-     done: false
-   }
- ]);
+ const currentValues = computed(() => {
+   const resultId = currentResult.value;
+   console.log("Result Id: ", resultId);
+   const result = resultHistory.value.find((r) => {
+     return r.id === resultId;
+   });
+   console.log("Result: ", result);
+   return result.data[0].values;
+ });
 
+ const chartProps = computed(() => ({
+   id: currentResult.value,
+   name: "rewards",
+   values: currentValues.value,
+   width: 500,
+   height: 500,
+   xPadding: 20,
+   yPadding: 20
+ }));
 </script>
 
 <template>
-  <h1>Next tasks:</h1>
-  <ol>
-    <li v-for="task in nextTasks">
-      <pre>[{{ task.done ? "X" : " " }}] - {{ task.desc }}</pre>
-    </li>
-  </ol>
   <v-app>
     <v-main>
       <v-row>
         <v-col cols="8">
           <v-row>
             <v-col cols="auto">
-              <v-container>
-                <div>
-                  <D3LineChart
-                    :data="chartData"
-                  ></D3LineChart>
-                </div>
+              <v-container
+              v-if="haveResult">
+                <D3LineChart v-bind="chartProps"></D3LineChart>
+              </v-container>
+              <v-container
+                v-else
+              >
+                No result to display...
               </v-container>
             </v-col>
           </v-row>
-          <v-row v-if="debug">
+          <v-row v-if="debug && haveResult">
             <v-col cols="6">
               <h2>Query History</h2>
               {{ queryHistory.length }} queries
-              <v-list>
+              <v-list v-if="queryHistory.length > 0">
                 <v-list-item v-for="(query, idx) in queryHistory" :key="idx">
                   <QueryTextView :query="query"></QueryTextView>
                 </v-list-item>
               </v-list>
             </v-col>
             <v-col cols="6">
-              <h2>Result History</h2>
-              {{ resultHistory.length }} results
-              <v-list>
-                <v-list-item v-for="(result, idx) in resultHistory" :key="idx">
-                  <pre>{{ result.series
-                       }}</pre>
-                </v-list-item>
-              </v-list>
+              <v-row>
+                <v-col cols="auto">
+                  <h2>Result History</h2>
+                  {{ resultHistory.length }} results
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="auto">
+                  <h2>Current Result</h2>
+                  {{ currentResult }}
+                  <v-list>
+                    <v-list-item v-for="(result, idx) in resultHistory" :key="idx">
+                      <pre>{{ result.data }}</pre>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+              </v-row>
             </v-col>
           </v-row>
         </v-col>
@@ -173,19 +175,15 @@
           <div class="form-container">
             <v-form @submit.prevent="onSubmitQuery">
               <v-expansion-panels v-model="panel" v-on-click-outside="onCancel">
-                <v-expansion-panel value="model" title="MODEL">
-                  <!-- <v-expansion-panel-title class="text-grey">
-                       MODEL</v-expansion-panel-title
-                       > -->
-                  <v-expansion-panel-text>
+                <v-expansion-panel class="text-grey" value="model" title="MODEL">
+                  <v-expansion-panel-text class="text-primary">
                     <v-select
                       :model-value="selectedModel"
                       @update:modelValue="selectModel"
                       :items="modelSelectionItems"
                       item-title="label"
                       item-value="name"
-                    >
-                    </v-select>
+                    ></v-select>
                     <ParametersForm
                       :data-name="selectedModel"
                       :items="modelParameters"
@@ -194,11 +192,8 @@
                     ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
-                <v-expansion-panel value="policy" title="POLICY">
-                  <!-- <v-expansion-panel-title class="text-grey"
-                       >POLICY</v-expansion-panel-title
-                       > -->
-                  <v-expansion-panel-text>
+                <v-expansion-panel class="text-grey" value="policy" title="POLICY">
+                  <v-expansion-panel-text class="text-primary">
                     <v-select
                       :model-value="selectedPolicy"
                       @update:modelValue="selectPolicy"
@@ -214,8 +209,8 @@
                     ></ParametersForm>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
-                <v-expansion-panel value="options" title="OPTIONS">
-                  <v-expansion-panel-text>
+                <v-expansion-panel class="text-grey" value="options" title="OPTIONS">
+                  <v-expansion-panel-text class="text-primary">
                     <ParametersForm
                       :items="optionsParameters"
                       @change="updateOptions"
@@ -229,11 +224,7 @@
               </v-container>
             </v-form>
           </div>
-          <v-checkbox
-            id="toggle-debug"
-            v-model="debug"
-            label="Debug Info"
-          ></v-checkbox>
+          <v-checkbox id="toggle-debug" v-model="debug" label="Debug Info"></v-checkbox>
           <v-container id="websocket-tile">
             <v-expansion-panels>
               <v-expansion-panel>
@@ -243,8 +234,7 @@
                       <v-list-item-title>WebSocket Info</v-list-item-title>
                     </v-col>
                     <v-col cols="6" class="d-flex justify-center">
-                      <v-list-item title="Status" :subtitle="wsStatus">
-                      </v-list-item>
+                      <v-list-item title="Status" :subtitle="wsStatus"></v-list-item>
                     </v-col>
                   </v-row>
                 </v-expansion-panel-title>
@@ -256,9 +246,7 @@
                         <v-row>
                           <v-spacer></v-spacer>
                           <v-col cols="auto">
-                            <v-btn type="button" @click="onResetWs"
-                              >Reset</v-btn
-                            >
+                            <v-btn type="button" @click="onResetWs">Reset</v-btn>
                           </v-col>
                           <v-col cols="auto">
                             <v-btn type="button" @click="onCloseWs">Stop</v-btn>

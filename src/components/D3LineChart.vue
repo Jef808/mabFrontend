@@ -1,127 +1,131 @@
 <script setup lang="ts">
  import * as d3 from 'd3';
- import { withDefaults, ref, computed, type Proptype } from "vue";
-
- export interface Margin {
-     top: number;
-     right: number;
-     bottom: number;
-     left: number
- }
+ import { withDefaults, ref, computed, type PropType, watch, onMounted } from "vue";
 
  export interface SeriesProps {
-     title: string;
-     values: Record<string, number>[];
+     name: string;
+     values: {action: number | string, step: number, value: number}[];
  }
 
  export interface Props {
-     data: SeriesProps | SeriesProps[]
-     width?: number;
-     height?: number;
-     margin?: Margin
+     id: string;
+     name: string;
+     values: {action: string, step: number, value: number}[];
+     width: number;
+     height: number;
+     xPadding: number;
+     yPadding: number;
  }
 
- const props = withDefaults(defineProps<Props>(), {
-     width: 500,
-     height: 270,
-     margin: {
-         top: 20,
-         right: 30,
-         bottom: 30,
-         left: 40
-     } as PropType<Margin>
+ const props = defineProps<Props>();
+
+ const Id = ref(props.id);
+ watch(Id, (newValue, oldValue) => {
+     if (newValue !== oldValue) {
+         console.log("New id detected");
+         console.log("Props:", props);
+         renderAxis();
+     }
+     else {
+         console.log("Old id detected");
+     }
  });
 
-const dataTitles = computed(() => {
-     return props.data.map(({title}) => title);
-});
-
-const padding = ref(60);
-const xPadding = computed(() => props.margin.left + props.margin.right);
-
-const xRange = computed(() => {
-     return [0, props.width - xPadding.value];
-});
-const yRange = computed(() => {
-     return [props.height - props.margin.bottom, props.margin.top];
-});
-
-const X = computed(() => {
-     return d3.scaleLinear()
-       .domain([0, d3.max(props.data, (d, i) => i)])
-       .rangeRound(xRange.value);
- });
-
- const Y = computed(() => {
-     return d3.scaleLinear()
-             .domain(d3.extent(props.data, d => d.y)).nice()
-             .range(yRange.value);
- });
-
- const path = computed(() => {
-     return d3.line()
-              .x(d => X.value(d.x))
-              .y(d => Y.value(d.y));
- });
- const line = computed(() => {
-     return path.value(props.data);
- });
  const viewBox = computed(() => {
      return `0 0 ${props.width} ${props.height}`;
  });
 
-function onDebug() {
-     console.log(d3.axisLeft().scale(X.value).toString());
+ const chartTransformAttr = computed(() => {
+     return `translate(${props.xPadding},${props.yPadding})`;
+ });
+
+ const xAxisTransformAttr = computed(() => {
+     return `translate(0,${props.height-2*props.yPadding})`;
+ });
+
+ const xRange = computed(() => {
+     return [0, props.width - 2 * props.xPadding];
+});
+
+ const yRange = computed(() => {
+     return [props.height - 2 * props.yPadding, 0];
+});
+const chartRef = ref(null);
+
+const scales = computed(() => {
+     console.log("scales: props.values:", props.values);
+     if (props.values.length === 0) {
+         console.warn("values is empty");
+         return;
+     }
+     const X = d3.scaleLinear()
+       .domain([
+           0,
+           d3.max(props.values, ({step}) => step)
+       ])
+       .rangeRound(xRange.value);
+     const Y = d3.scaleLinear()
+                 .domain(
+                     d3.extent(props.values, ({value}) => value)
+                 ).nice()
+                 .range(yRange.value);
+     return { X, Y };
+ });
+/* */
+ function renderAxis() {
+     const { X, Y } = scales.value;
+     d3.select("g.axes-x").call(d3.axisBottom(X));
+     d3.select("g.axes-y").call(d3.axisBottom(Y));
  }
-
- // function updateAxis() {
- //     xAxisContainer.value = d3.select<SVGGElement, any>("g[id=xAxisContainer]");
- //     xAxisContainer.value.selectChildren("g").remove();
- //     xAxisContainer.value.call(d3.axisBottom(xScale.value));
- //
- //     yAxisContainer.value = d3.select<SVGGElement, any>("g[id=yAxisContainer]");
- //     yAxisContainer.value.selectChildren("g").remove();
- //     yAxisContainer.value.call(d3.axisLeft(yScale.value));
- // }
-
-const chartViewType = ref("Raw Data");
-
-</script>
+ /* */
+ const path = computed(() => {
+     const { X, Y } = scales.value;
+     return d3.line()
+              .x(d => X(d.step))
+              .y(d => Y(d.value));
+ });
+/* */
+ const line = computed(() => {
+     return path.value(props.values);
+ });
+/* */
+function onDebug() {
+     const { X, Y } = scales.value;
+     console.log(JSON.stringify(props.values, null, 2));
+     console.log(d3.axisLeft(Y).toString());
+     renderAxis();
+ }
+ </script>
 
 <template>
+  <div>
     <div>
         <v-btn @click="onDebug">
             Debug
         </v-btn>
     </div>
-    <div>
-        <v-select
-            :items="['Raw Data', 'Rolling Average']"
-            v-model="chartViewType"
-        >
-        </v-select>
-    </div>
     <svg
-        class="line-chart"
-        :width="props.width"
-        :height="props.height"
+        class="chart"
+        :width="width"
+        :height="height"
         :viewBox="viewBox"
     >
-        <g transform="translate(0, 10)">
-            <path
-                class="line-chart__line"
-                :d="line"
-            >
-            </path>
+        <g :transform="chartTransformAttr" class="chart">
+            <g class="axes-x"
+             :transform="xAxisTransformAttr"
+            ></g>
+            <g class="axes-y"></g>
+            <path class="chart-line" :d="line" />
         </g>
     </svg>
+  </div>
 </template>
 
 <style>
- .line-chart {
+ .chart {
      margin: 25px;
  }
- .line-chart__line {
+ .chart-line {
      fill: none;
      stroke: #76BF8A;
      stroke-width: 3px;

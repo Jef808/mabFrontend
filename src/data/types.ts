@@ -1,54 +1,60 @@
 export type Parameter = {
     name: string;
-    label: string;
+    label: () => name; // lodash.autoLabel(name);
     value: number;
-    min: number;
-    max: number;
-    step: number;
+    min: Nullable<number>;
+    max: Nullable<number>;
+    step: Nullable<number>;
 };
 
-type DataModel = {
-    name: string;
-    label: string;
-    parameters: Parameter[];
-};
-
-export type Model = DataModel;
-export type Policy = DataModel;
-export type Options = DataModel;
-export type Category = "model" | "policy" | "options";
-
-export interface Series {
-    data: number[];
-    label?: string;
-    backgroundColor?: string;
+export type QueryOptions = {
+    numberOfSteps: number;
 }
 
-export interface ChartData {
-    labels: string[];
-    datasets: Series[];
-}
-
-export interface DataQuery {
+export interface QueryFormModel {
+    id: string;
     modelName: string;
-    modelParameters: [{
+    modelParameters: {
         [name: string]: number;
-    }];
+    };
     policyName: string;
-    policyParameters: [{
+    policyParameters: {
         [name: string]: number;
-    }];
-    options: [{
-        [name: string]: number;
-    }];
+    };
+    options: QueryOptions;
 }
 
 export interface QueryResult {
     id: string;
-    data: {
-        name: string;
-        values: [number, number];
-        }[];
+    data: Series<{action: string}>[];
+}
+
+export type SeriesValue<V> = V & {
+    step?: number, value: number
+};
+
+export type SeriesOptions = {
+    name: string;
+    label: () => name;
+    color: Nullable<string>;
+}
+
+export type Series<V> = {
+    id: string;
+    data: SeriesValue<V>[];
+    options: Nullable<SeriesOptions>;
+}
+
+export type ChartOptions = {
+    // TODO: Represent data with collection of series Id
+    id: string;
+    label: () => name;
+    backgroundColor?: string;
+}
+
+export type ChartData<PointMeta = {}> = {
+    datasets: Series<PointMeta>[];
+    options?: ChartOptions;
 }
 
 export type WithId<T> = T & { id: string };

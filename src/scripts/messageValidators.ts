@@ -1,7 +1,4 @@
 function has_id<T extends object>(obj: T) { return 'id' in obj; }
-function has_named_model<T extends object>(obj: T) { return 'model' in obj && typeof obj.model === 'object' && 'name' in (obj.model as object); }
-function has_named_policy<T extends object>(obj: T) { return 'policy' in obj && typeof obj.policy === 'object' && 'name' in (obj.policy as object); }
-function has_options<T extends object>(obj: T) { return 'options' in obj; }
 function has_data<T extends object>(obj: T) { return 'data' in obj && Array.isArray(obj.data); }
 function each_data_has_name<T extends { data: object[] }>(obj: T) {
     return obj.data.every((d: any) => {
@@ -54,9 +51,9 @@ export function validateMsgFront2Back(message: string) {
  * Verify that message can be parsed into a valid QueryResult object,
  * with well-defined (named) values formatted as pairs of numbers
  */
-export function validateMsgBack2Front(message: string) {
+export function validateMsgBack2Front(msg: QueryResult) {
     try {
-        const msg = JSON.parse(message);
+        const requiredProps = ['id', 'data'];
         const is_ok = has_id(msg) && has_data(msg);
         const is_values_ok = is_ok && each_data_has_name(msg) && eachDataHasValidValues(msg);
         return is_ok ? is_values_ok ? ValidationResult.Ok : ValidationResult.InvalidData : ValidationResult.RequiredPropMissing;

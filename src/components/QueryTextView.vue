@@ -1,23 +1,18 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import type { DataQuery } from "@/data/types";
+import { computed, withDefaults } from "vue";
+import type { QueryForm } from "@/data/types";
 export interface Props {
-  query: DataQuery;
+  query: QueryForm;
+  selected?: boolean;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  selected: false,
+});
 
- // const toNamedValue = (obj: object) => {
- //   const NamedValue = Object.entries(obj);
- //   return { name: NamedModel[0], value: NamedModel[1] };
- // };
-
-// Converts any object { objName: objValue } into
-// the 'named' object { name: objName, value: objValue }.
-const extractParameters = (queryParams: Record<string, number>) => {
-  return Object.entries(queryParams).map((p) => {
-    const [name, value] = p;
-    return { name, value };
-  });
+// Converts an object of property-values {{ objName: objValue }, ... } into
+// an array of named and valued records [{ name: objName, value: objValue }, ... ]
+const extractParameters = (obj: { [name: string]: number }) => {
+  return Object.entries(obj).map(([name, value]) => ({ name, value }));
 };
 
 const modelParameters = computed(() => {
@@ -29,12 +24,19 @@ const policyParameters = computed(() => {
 const optionsParameters = computed(() => {
   return extractParameters(props.query.options);
 });
+
+// Change variant when selected?
+const variant = computed(() => {});
 </script>
 
 <template>
   <v-card variant="outlined">
     <v-list>
-      <v-list-subheader title="Model"> </v-list-subheader>
+      <v-list-subheader>
+        <v-list-subheader-title>
+          Model: {{ query.modelName }}
+        </v-list-subheader-title>
+      </v-list-subheader>
       <v-item-group>
         <v-card>
           <v-list-item
@@ -42,11 +44,14 @@ const optionsParameters = computed(() => {
             :title="param.name"
             :subtitle="param.value"
             :value="param.value"
-          >
-          </v-list-item>
+          ></v-list-item>
         </v-card>
       </v-item-group>
-      <v-list-subheader title="Policy"></v-list-subheader>
+      <v-list-subheader>
+        <v-list-subheader-title>
+          Policy: {{ query.policyName }}
+        </v-list-subheader-title>
+      </v-list-subheader>
       <v-item-group>
         <v-card>
           <v-list-item
@@ -55,8 +60,7 @@ const optionsParameters = computed(() => {
             :title="param.name"
             :subtitle="param.value"
             :value="param.value"
-          >
-          </v-list-item>
+          ></v-list-item>
         </v-card>
       </v-item-group>
       <v-list-subheader title="Options"></v-list-subheader>
@@ -68,8 +72,7 @@ const optionsParameters = computed(() => {
             :title="param.name"
             :subtitle="param.value"
             :value="param.value"
-          >
-          </v-list-item>
+          ></v-list-item>
         </v-card>
       </v-item-group>
     </v-list>

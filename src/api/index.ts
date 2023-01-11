@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import * as config from "@/data/apiConfig.json" assert { type: "json" };
 import { Request } from "zeromq";
-import type { DataQuery } from "@/data/types";
+import type { QueryForm } from "@/data/types";
 
 const reqSock = new Request();
 
@@ -34,7 +34,7 @@ try {
     process.exit(1);
 }
 
-export async function submitQuery(queryObject: DataQuery) {
+export async function submitQuery(queryObject: QueryForm) {
     await reqSock.send(JSON.stringify(queryObject));
     const [response] = await reqSock.receive();
     return JSON.parse(response.join());

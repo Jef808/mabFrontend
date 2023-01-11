@@ -4,15 +4,16 @@ import { useWebSocket } from "@vueuse/core";
 import { defineStore } from "pinia";
 import { useFormStore } from "@/store/form.store";
 import { validateMsgFront2Back, validateMsgBack2Front } from "@/scripts/messageValidators";
-import type { DataQuery, QueryResult, WithId, Model, Policy, Options } from "@/data/types";
+import type { QueryFormModel, QueryResult, WithId, Model, Policy, Options } from "@/data/types";
 
-const getQuery = (): DataQuery => {
+export const getQuery = (): QueryFormModel => {
     const {
         model: { name: modelName, parameters: mParameters },
         policy: { name: policyName, parameters: pParameters },
         options: { parameters: oParameters },
     } = useFormStore().currentData;
     return {
+        id: uniqueId('query-'),
         modelName,
         modelParameters: Object.fromEntries(
           mParameters.map((param) => [param.name, param.value])
@@ -28,8 +29,8 @@ const getQuery = (): DataQuery => {
 };
 
 export const useQueryStore = defineStore("queryStore", () => {
-    const queryHistory = shallowReactive([] as WithId<DataQuery>[]);
-    const resultHistory = shallowReactive([] as WithId<QueryResult>[]);
+    const queryHistory = shallowReactive([] as QueryFormModel[]);
+    const resultHistory = shallowReactive([] as QueryResult[]);
 
     const currentResult = ref("");
 
@@ -63,28 +64,30 @@ export const useQueryStore = defineStore("queryStore", () => {
         onMessage: (_, event) => {
           if (event.data === "pong")
             return;
-          try {
-            const rep = event.data;
 
+          console.log("Received", event);
+
+          try {
+            const rep = JSON.parse(event.data);
             const validationResult = validateMsgBack2Front(rep);
 
             if (validationResult !== 'Ok') {
-                console.error(`${validationResult}\n${JSON.stringify(rep, null, 2)}`);
+                console.error("Error while receiving response ", validationResult, JSON.stringify(rep, null, 2));
+                return;
             }
             else {
                 console.log(validationResult);
             }
 
-            resultHistory.push(JSON.parse(rep));
-            currentResult.value = event.data.id;
-            console.log("Received", event);
+            resultHistory.push(rep);
+            currentResult.value = rep.id;
           }
           catch (err) {
             console.error("Failed to parse data of response", event);
           }
         },
         onDisconnected: (_: WebSocket, event: CloseEvent) => {
-            console.warn("Web Socket Disconncted", event);
+            console.warn("Web Socket Disconnected", event);
         },
         onError: (_, event) => {
             console.error(event);
@@ -103,11 +106,10 @@ export const useQueryStore = defineStore("queryStore", () => {
     /**
      * Send the curent query to the backend through the WebSocket
      */
-    async function submitQuery() {
-        const query = getQuery();
+    async function submitQuery(query: QueryForm) {
         const nbQueries = queryHistory.length;
 
-        const previousEntry = queryHistory.find((q) => {
+        const duplicateEntry = queryHistory.find((q) => {
           if (query.modelName !== q.modelName
             || query.policyName !== q.policyName) {
               return false;
@@ -128,9 +130,9 @@ export const useQueryStore = defineStore("queryStore", () => {
         });
 
         // Do not resend the query if it was previously computed.
-        if (previousEntry !== undefined) {
+        if (duplicateEntry !== undefined) {
             console.log("Found query in cache");
-            currentResult.value = previousEntry.id;
+            currentResult.value = duplicateEntry.id;
             return;
         }
 
@@ -143,23 +145,22 @@ export const useQueryStore = defineStore("queryStore", () => {
         }
 
         try {
-            const queryWithId = { id: uniqueId("query-"), ...query };
-
-            const req = JSON.stringify(queryWithId);
+            const req = JSON.stringify(query);
             const validationResult = validateMsgFront2Back(req);
 
             if (validationResult !== 'Ok') {
-                console.error(`${validationResult}\n${req}`);
+                console.error("Error while validating: ", validationResult, req);
+                return;
             }
             else {
                 console.log(validationResult);
             }
 
             wsSend(req);
-            queryHistory.push(queryWithId);
-            console.log("Sent query", queryWithId.id);
+            queryHistory.push(query);
+            console.log("Query sent");
         } catch (err) {
-            console.error("Error while sending query", err);
+            console.error("Error while sending query", query.id, err);
             queryHistory.length = nbQueries;
             if (resultHistory.length !== queryHistory.length) {
                 console.warn(
@@ -181,7 +182,7 @@ export const useQueryStore = defineStore("queryStore", () => {
         submitQuery,
         queryHistory: readonly(queryHistory),
         resultHistory: readonly(resultHistory),
+        currentResult: readonly(currentResult),
         setWebSocketUrl,
-
     };
 });
