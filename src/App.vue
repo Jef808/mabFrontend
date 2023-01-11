@@ -115,9 +115,9 @@
    id: currentResult.value,
    name: "rewards",
    values: currentValues.value,
-   width: 500,
+   width: 1000,
    height: 500,
-   xPadding: 20,
+   xPadding: 30,
    yPadding: 20
  }));
 </script>
@@ -130,7 +130,8 @@
           <v-row>
             <v-col cols="auto">
               <v-container
-              v-if="haveResult">
+                v-if="haveResult"
+              >
                 <D3LineChart v-bind="chartProps"></D3LineChart>
               </v-container>
               <v-container

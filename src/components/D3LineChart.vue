@@ -1,6 +1,6 @@
 <script setup lang="ts">
  import * as d3 from 'd3';
- import { withDefaults, ref, computed, type PropType, watch, onMounted } from "vue";
+ import { withDefaults, ref, computed, type PropType, watch, onMounted, onBeforeMount, onBeforeUpdate } from "vue";
 
  export interface SeriesProps {
      name: string;
@@ -31,6 +31,14 @@
      }
  });
 
+ onMounted(() => {
+     renderAxis();
+ })
+
+ onBeforeUpdate(() => {
+     renderAxis();
+ });
+
  const viewBox = computed(() => {
      return `0 0 ${props.width} ${props.height}`;
  });
@@ -50,17 +58,15 @@
  const yRange = computed(() => {
      return [props.height - 2 * props.yPadding, 0];
 });
-const chartRef = ref(null);
 
 const scales = computed(() => {
-     console.log("scales: props.values:", props.values);
      if (props.values.length === 0) {
          console.warn("values is empty");
          return;
      }
      const X = d3.scaleLinear()
        .domain([
-           0,
+           d3.min(props.values, ({step}) => step),
            d3.max(props.values, ({step}) => step)
        ])
        .rangeRound(xRange.value);
@@ -71,11 +77,11 @@ const scales = computed(() => {
                  .range(yRange.value);
      return { X, Y };
  });
-/* */
+ /* */
  function renderAxis() {
      const { X, Y } = scales.value;
      d3.select("g.axes-x").call(d3.axisBottom(X));
-     d3.select("g.axes-y").call(d3.axisBottom(Y));
+     d3.select("g.axes-y").call(d3.axisLeft(Y));
  }
  /* */
  const path = computed(() => {
@@ -84,17 +90,16 @@ const scales = computed(() => {
               .x(d => X(d.step))
               .y(d => Y(d.value));
  });
-/* */
+ /* */
  const line = computed(() => {
      return path.value(props.values);
  });
 /* */
 function onDebug() {
-     const { X, Y } = scales.value;
-     console.log(JSON.stringify(props.values, null, 2));
-     console.log(d3.axisLeft(Y).toString());
-     renderAxis();
- }
+  console.log("values", props.values);
+  console.log("path.d", line);
+  renderAxis();
+}
  </script>
 
 <template>

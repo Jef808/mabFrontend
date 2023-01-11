@@ -33,11 +33,11 @@ const variant = computed(() => {});
   <v-card variant="outlined">
     <v-list>
       <v-list-subheader>
-        <v-list-subheader-title>
-          Model: {{ query.modelName }}
-        </v-list-subheader-title>
+        {{ query.id }}
       </v-list-subheader>
-      <v-item-group>
+      <v-list-subheader>
+        Model: {{ query.modelName }}
+      </v-list-subheader>
         <v-card>
           <v-list-item
             v-for="param in modelParameters"
@@ -46,13 +46,9 @@ const variant = computed(() => {});
             :value="param.value"
           ></v-list-item>
         </v-card>
-      </v-item-group>
       <v-list-subheader>
-        <v-list-subheader-title>
           Policy: {{ query.policyName }}
-        </v-list-subheader-title>
       </v-list-subheader>
-      <v-item-group>
         <v-card>
           <v-list-item
             v-for="param in policyParameters"
@@ -62,9 +58,7 @@ const variant = computed(() => {});
             :value="param.value"
           ></v-list-item>
         </v-card>
-      </v-item-group>
       <v-list-subheader title="Options"></v-list-subheader>
-      <v-item-group>
         <v-card>
           <v-list-item
             v-for="param in optionsParameters"
@@ -74,7 +68,6 @@ const variant = computed(() => {});
             :value="param.value"
           ></v-list-item>
         </v-card>
-      </v-item-group>
     </v-list>
   </v-card>
 </template>
