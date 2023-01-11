@@ -30,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 // local copy of each values into an array
+// TODO: Parse input coming from the textfield as int64 (same as slider input)
 let modelValues = reactive(props.items.map(({ value }) => value));
 
 // Repopulate `modelValues` upon change of data source

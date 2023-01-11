@@ -19,18 +19,6 @@
 
  const props = defineProps<Props>();
 
- const Id = ref(props.id);
- watch(Id, (newValue, oldValue) => {
-     if (newValue !== oldValue) {
-         console.log("New id detected");
-         console.log("Props:", props);
-         renderAxis();
-     }
-     else {
-         console.log("Old id detected");
-     }
- });
-
  onMounted(() => {
      renderAxis();
  })
